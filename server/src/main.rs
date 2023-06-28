@@ -40,8 +40,13 @@ async fn handle_client(mut conn: TcpStream) {
         log::info!("{cmd}");
         let args: Vec<&str> = cmd.split(' ').collect();
         match execute_send_command(args) {
-            Ok(m) => if conn.write_all(format!("{m}\0").as_bytes()).await.is_err() { return } else { continue },
-            Err(e) => if conn.write_all(format!("{e}\0").as_bytes()).await.is_err() || e == "exit" { return }
+            Ok(m) => {
+                if conn.write_all(format!("{m}\0").as_bytes()).await.is_err() { return } else { continue }
+            },
+            Err(e) => {
+                log::error!("{e}");
+                if conn.write_all(format!("{e}\0").as_bytes()).await.is_err() || e == "exit" { return }
+            }
         };
     }
 }
