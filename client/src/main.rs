@@ -27,7 +27,7 @@ fn main() {
     loop {
         let cmd = match rl.readline("$ ") {
             Ok(cmd) => cmd,
-            Err(ReadlineError::Interrupted) => return,
+            Err(ReadlineError::Interrupted)|Err(ReadlineError::Eof) => return,
             Err(e) => return eprintln!("{e}"),
         };
 
