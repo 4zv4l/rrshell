@@ -22,7 +22,7 @@ fn execute_send_command(args: Vec<&str>) -> Result<String, String> {
             return Err("missing path".into())
         }
         match set_current_dir(args[1]) {
-            Ok(_) => return Ok("changed dir with success".to_string()),
+            Ok(_) => return Ok("changed dir with success".into()),
             Err(_) => return Err("error when changing dir".into())
         };
     }
