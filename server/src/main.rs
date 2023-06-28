@@ -28,7 +28,7 @@ fn execute_send_command(args: Vec<&str>) -> Result<String, String> {
         _ => {}
     };
 
-    let Ok(output) = process::Command::new(args[0]).args(&args[1..]).output() else { return Err("command error".into()) };
+    let Ok(output) = process::Command::new(args[0]).args(&args[1..]).output() else { return Err(format!("{}: command error", args[0])) };
     let Ok(output) = String::from_utf8(output.stdout) else { return Err("command output error".into()) };
     Ok(output)
 }
@@ -45,7 +45,7 @@ async fn handle_client(mut conn: TcpStream) {
             },
             Err(e) => {
                 log::error!("{e}");
-                if conn.write_all(format!("{e}\0").as_bytes()).await.is_err() || e == "exit" { return }
+                if conn.write_all(format!("{e}\n\0").as_bytes()).await.is_err() || e == "exit" { return }
             }
         };
     }
