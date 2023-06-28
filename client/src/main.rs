@@ -1,7 +1,7 @@
 use std::env::args;
 use std::net;
 use std::io::{stdout,Write,Read};
-use rustyline;
+use rustyline::{DefaultEditor, error::ReadlineError};
 
 fn read_result(conn: &mut net::TcpStream) -> Result<(), std::io::Error> {
     let mut c: [u8; 1] = [0];
@@ -23,11 +23,11 @@ fn main() {
         Err(e) => return eprintln!("{e}"),
     };
 
-    let mut rl = rustyline::DefaultEditor::new().unwrap();
+    let mut rl = DefaultEditor::new().unwrap();
     loop {
         let cmd = match rl.readline("$ ") {
             Ok(cmd) => cmd,
-            Err(rustyline::error::ReadlineError::Interrupted) => return,
+            Err(ReadlineError::Interrupted) => return,
             Err(e) => return eprintln!("{e}"),
         };
 

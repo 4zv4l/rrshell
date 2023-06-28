@@ -1,6 +1,5 @@
 use std::env::{args,set_current_dir};
 use std::process;
-use log::Level;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::{TcpListener, TcpStream};
 
@@ -29,7 +28,7 @@ fn execute_send_command(args: Vec<&str>) -> Result<String, String> {
 
     let Ok(output) = process::Command::new(args[0]).args(&args[1..]).output() else { return Err("command error".into()) };
     let Ok(output) = String::from_utf8(output.stdout) else { return Err("command output error".into()) };
-    Ok(format!("{}", output))
+    Ok(output)
 }
 
 async fn handle_client(mut conn: TcpStream) {
@@ -37,17 +36,17 @@ async fn handle_client(mut conn: TcpStream) {
         let cmd = read_command(&mut conn).await;
         if cmd.is_empty() { return }
         log::info!("{cmd}");
-        let args: Vec<&str> = cmd.split(" ").collect();
+        let args: Vec<&str> = cmd.split(' ').collect();
         match execute_send_command(args) {
             Ok(m) => if conn.write_all(format!("{m}\0").as_bytes()).await.is_err() { return } else { continue },
-            Err(e) => if e == "exit" || conn.write_all(format!("{}\0", e).as_bytes()).await.is_err() { return },
+            Err(e) => if conn.write_all(format!("{e}\0").as_bytes()).await.is_err() || e == "exit" { return }
         };
     }
 }
 
 #[tokio::main]
 async fn main() {
-    simple_logger::init_with_level(Level::Info).unwrap();
+    simple_logger::init().unwrap();
 
     let args: Vec<String> = args().collect();
     if args.len() != 3 {
