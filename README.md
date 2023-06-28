@@ -1,2 +1,2 @@
 # rrshell
-asyn remote shell in rust
+async remote shell in rust
