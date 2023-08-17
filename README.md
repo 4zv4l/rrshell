@@ -23,3 +23,7 @@ Simply run
 ```sh
 cargo build --release
 ```
+
+## Compatibility
+
+It should work on Linux, Windows and MacOS.
